@@ -1,0 +1,21 @@
+.modal-actions {
+    width: 600px;
+    margin-top: 2rem;
+    justify-content: space-evenly;
+}
+
+.modal-action:first-child, .modal-action:last-child {
+    padding: 0.25rem 1rem;
+}
+
+.modal-action:first-child {
+    background-color: #89df59;
+}
+
+.modal-action:last-child {
+    background-color: #c87545;
+}
+
+.single-input {
+    padding: 1rem 2rem 0 2rem;
+}

@@ -1,0 +1,1 @@
+project documents should be placed under this directory
