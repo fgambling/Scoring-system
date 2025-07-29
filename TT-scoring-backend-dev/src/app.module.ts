@@ -19,42 +19,57 @@ import { TestsModule } from './tests/tests.module';
 import { AutoMarkModule } from './auto-mark/auto-mark.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guards';
+
+/**
+ * Main application module that configures all dependencies and modules
+ * This module serves as the root module for the Automatic Scoring System
+ */
 @Module({
   imports: [
-    UsersModule,
-    AuthModule,
-    DatabaseModule,
-    TestsModule,
-    AutoMarkModule,
-    ManualMarkModule,
+    // Core modules for user management and authentication
+    UsersModule,        // Handles user CRUD operations
+    AuthModule,         // Handles authentication and authorization
+    DatabaseModule,     // Database connection and configuration
+    
+    // Feature modules for test management and scoring
+    TestsModule,        // Manages test creation, editing, and metadata
+    AutoMarkModule,     // Handles automatic scoring functionality
+    ManualMarkModule,   // Handles manual marking functionality
+    
+    // Rate limiting configuration to prevent API abuse
     ThrottlerModule.forRoot({
       throttlers: [
         {
           name: 'auth',
-          ttl: 60,
-          limit: 10,
+          ttl: 60,        // Time window in seconds
+          limit: 10,      // Maximum requests per time window
         },
       ],
     }),
   ],
+  
+  // Controllers handle HTTP requests and define API endpoints
   controllers: [
-    AppController,
-    AuthController,
-    UsersController,
-    ManualMarkController,
-    TestsController,
+    AppController,           // Basic app endpoints
+    AuthController,          // Authentication endpoints (login, register)
+    UsersController,         // User management endpoints
+    ManualMarkController,    // Manual marking endpoints
+    TestsController,         // Test management endpoints
   ],
 
+  // Providers include services and guards that provide business logic
   providers: [
-    AppService,
-    UsersService,
-    AuthService,
-    ManualMarkService,
-    { provide: APP_GUARD, useClass: AuthGuard },
-    { provide: APP_GUARD, useClass: RolesGuard },
+    AppService,             // Basic application service
+    UsersService,           // User management business logic
+    AuthService,            // Authentication business logic
+    ManualMarkService,      // Manual marking business logic
+    
+    // Global guards that apply to all routes
+    { provide: APP_GUARD, useClass: AuthGuard },           // JWT authentication guard
+    { provide: APP_GUARD, useClass: RolesGuard },          // Role-based access control guard
     {
       provide: APP_GUARD,
-      useClass: CustomThrottlerGuard,
+      useClass: CustomThrottlerGuard,                       // Rate limiting guard
     },
   ],
 })

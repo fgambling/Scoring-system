@@ -13,9 +13,16 @@ import { Response } from 'src/common/json.response.interface';
 import { AssignMarkerDto } from 'src/dto/assign.marker.dto';
 import { User } from 'src/users/interface/user.interface';
 import { UserRole } from 'src/users/enums/user-role.enum';
+
+/**
+ * Test management service that handles CRUD operations for tests
+ * Provides functionality for creating, editing, deleting, and managing tests
+ * Includes features for importing tests from Excel files and generating alternative answer keys
+ */
 @Injectable()
 export class TestsService {
   private readonly logger = new Logger(TestsService.name);
+  
   constructor(
     @Inject('TEST_MODEL')
     private testModel: Model<Test>,
@@ -24,17 +31,19 @@ export class TestsService {
     @Inject('USER_MODEL')
     private userModel: Model<User>,
   ) {}
+
   /**
-   * Test developer can only edit published tests or tests created by themselves
-   * @param request Request with the jwt token
-   * @param testDto Test related request
-   * @returns
+   * Saves or updates a test with proper authorization checks
+   * Test developers can only edit published tests or tests created by themselves
+   * @param request - HTTP request object containing user information
+   * @param testDto - Test data transfer object with test information
+   * @returns Promise with saved test details or error response
    */
   async saveTest(
     request: Request,
     testDto: TestDto,
   ): Promise<Response<{ test: TestDetail }>> {
-    //field validation
+    // Validate required fields
     if (testDto.name == null || testDto.name == '') {
       return {
         statusCode: -1,
@@ -42,15 +51,16 @@ export class TestsService {
         data: null,
       };
     }
-    //transaction management
+    
+    // Start database transaction for data consistency
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      //check if test exists
+      // Check if test exists for updates
       let test: Test;
       if (testDto._id != null) {
         test = await this.testModel.findById(testDto._id);
-        //Security check: check if the unpublished test belongs to this test developer
+        // Security check: ensure unpublished tests belong to the requesting user
         if (
           test != null &&
           !test.isPublished &&
@@ -62,8 +72,9 @@ export class TestsService {
 
       const newQuestionIds = [];
       const oldQuestionIds = test ? test.questionIds : [];
+      
       if (test) {
-        // update existing test, test status and developer id will not be updated
+        // Update existing test - preserve status and developer ID
         test = await this.testModel
           .findOneAndUpdate(
             { _id: testDto._id },
@@ -79,8 +90,7 @@ export class TestsService {
           )
           .session(session);
       } else {
-        // create new test if id does not exist or no such test found
-        // test status is set to unmarked
+        // Create new test with initial unmarked status
         [test] = await this.testModel.create(
           [
             {

@@ -13,17 +13,33 @@ import { TestStatus } from 'src/tests/enums/test.status.enum';
 import { MarkConfig } from './interface/markingConfig.interface';
 import { ConfigOption } from 'src/tests/enums/config.option.enum';
 import * as ExcelJS from 'exceljs';
+
+/**
+ * Interface for student score data structure
+ */
 interface StudentScores {
   studentId: string;
   totalScore: string;
   isFlagged: boolean;
   [key: string]: number | string | boolean;
 }
+
 import { User } from 'src/users/interface/user.interface';
 
+/**
+ * Automatic marking service that handles automated test scoring
+ * Provides functionality for scoring answers, downloading results, and managing marking reports
+ */
 @Injectable()
 export class AutoMarkService {
+  /**
+   * Downloads test results as an Excel file
+   * @param request - HTTP request object containing user information
+   * @param id - Test ID to download results for
+   * @returns Excel file buffer containing student scores
+   */
   async download(request: Request, id: string) {
+    // Verify test exists and user has permission to access it
     const test = await this.testModel.findById(id);
     if (
       test == null ||
@@ -31,6 +47,8 @@ export class AutoMarkService {
     ) {
       throw Error('Invalid Test or unauthorised');
     }
+    
+    // Get question information for the test
     const questionIds = test.questionIds;
     const questions = await this.questionModel.find({
       _id: { $in: questionIds },
@@ -40,14 +58,16 @@ export class AutoMarkService {
       title: q.title,
     }));
 
+    // Get all answers for the test questions
     const answers = await this.answerModel.find({
       questionId: { $in: questionIds },
     });
 
-    //create worksheet
+    // Create Excel workbook and worksheet
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Scores');
 
+    // Define column headers
     const columns = [
       'Student ID',
       ...questionTitles.map((qt) => qt.title),
@@ -55,6 +75,7 @@ export class AutoMarkService {
     ];
     worksheet.addRow(columns);
 
+    // Process student scores from answers
     const studentScores = answers.reduce<{ [key: string]: StudentScores }>(
       (acc, answer) => {
         if (!acc[answer.name]) {
@@ -90,13 +111,15 @@ export class AutoMarkService {
       },
       {},
     );
-    // After processing all answers, update the totalScore to include (flagged) if necessary
+    
+    // Mark total score as flagged if any answer is flagged
     Object.values(studentScores).forEach((student) => {
       if (student.isFlagged) {
         student.totalScore += '(flagged)';
       }
     });
 
+    // Add student score rows to worksheet
     Object.values(studentScores).forEach((score: StudentScores) => {
       const row = columns.map((col) => {
         if (col === 'Total') {
@@ -112,11 +135,20 @@ export class AutoMarkService {
       worksheet.addRow(row);
     });
 
+    // Return Excel file as buffer
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
   }
+
+  /**
+   * Gets marking report with statistics for a test
+   * @param request - HTTP request object
+   * @param id - Test ID
+   * @returns Marking report with status and statistics
+   */
   async getMarkingReport(request: Request, id: string): Promise<Response<any>> {
     try {
+      // Verify test exists and user has permission
       const test = await this.testModel.findById(id);
       if (
         test == null ||
@@ -124,6 +156,8 @@ export class AutoMarkService {
       ) {
         throw Error('Invalid Test or unauthorised');
       }
+      
+      // Return early if test is not marked yet
       if (
         test.status == TestStatus.Unmarked ||
         test.status == TestStatus.AutoMarking
@@ -138,6 +172,8 @@ export class AutoMarkService {
           },
         };
       }
+      
+      // Count flagged and completed answers
       const questionIds = test.questionIds;
       let flagged = 0;
       let completed = 0;
@@ -174,8 +210,14 @@ export class AutoMarkService {
       };
     }
   }
+
+  // Private properties for spell checking and pluralization
   private spellChecker;
   private pluralize;
+
+  /**
+   * Constructor initializes database models and external libraries
+   */
   constructor(
     @Inject('TEST_MODEL')
     private testModel: Model<Test>,
@@ -188,6 +230,10 @@ export class AutoMarkService {
   ) {
     this.initInstance();
   }
+
+  /**
+   * Initializes spell checker and pluralization libraries
+   */
   private async initInstance(): Promise<void> {
     if (!this.spellChecker) {
       this.spellChecker = await import('spellchecker');
@@ -196,13 +242,21 @@ export class AutoMarkService {
       this.pluralize = await import('pluralize');
     }
   }
+
+  /**
+   * Initiates automatic marking process for a test
+   * @param request - HTTP request object
+   * @param file - Excel file containing student answers
+   * @param id - Test ID
+   * @returns Success or error response
+   */
   async autoMark(
     request: Request,
     file: Express.Multer.File,
     id: string,
   ): Promise<Response<any>> {
     try {
-      //check testd
+      // Verify test exists and user has permission
       const test = await this.testModel.findById(id);
       if (
         test == null ||
@@ -213,7 +267,8 @@ export class AutoMarkService {
       if (test.status != TestStatus.Unmarked) {
         throw Error('Test has been auto marked.');
       }
-      //read excel file
+      
+      // Read and parse Excel file
       const workbook = xlsx.read(file.buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0]; // Assuming there's only one sheet
       const sheet = workbook.Sheets[sheetName];
@@ -222,12 +277,14 @@ export class AutoMarkService {
         raw: false,
         blankrows: false,
       });
-      const questionTitles = jsonData[0].slice(1); // Assuming the first row contains headers
-      const dataRows = jsonData.slice(1); // All other rows
-      //start transaction
+      const questionTitles = jsonData[0].slice(1); // First row contains headers
+      const dataRows = jsonData.slice(1); // All other rows contain student data
+      
+      // Start database transaction for data consistency
       await this.answerModel.db.startSession().then(async (session) => {
         session.startTransaction();
         try {
+          // Process each question and student answer
           for (let i = 0; i < questionTitles.length; i++) {
             const title = questionTitles[i];
             const question = await this.questionModel
@@ -237,17 +294,12 @@ export class AutoMarkService {
               throw new Error(`Question with title ${title} does not exist`);
             }
 
+            // Process each student's answer for this question
             for (let j = 0; j < dataRows.length; j++) {
               const studentId = dataRows[j][0];
               const answerText = dataRows[j][i + 1];
-              // Logger.log(
-              //   'Question:' +
-              //     title +
-              //     ', student ID:' +
-              //     studentId +
-              //     ', answer:' +
-              //     answerText,
-              // );
+              
+              // Create answer record in database
               const answer = new this.answerModel({
                 name: `${studentId}`,
                 questionId: question._id,
@@ -258,6 +310,8 @@ export class AutoMarkService {
               await answer.save({ session });
             }
           }
+          
+          // Update test status to AutoMarking
           await this.testModel
             .updateOne(
               { _id: id },
@@ -265,7 +319,8 @@ export class AutoMarkService {
             )
             .session(session);
           await session.commitTransaction();
-          //start automarking here
+          
+          // Start the actual marking process
           this.automarking(test);
         } catch (error) {
           await session.abortTransaction();
@@ -288,18 +343,26 @@ export class AutoMarkService {
       };
     }
   }
+
+  /**
+   * Performs the actual automatic marking of all answers for a test
+   * @param test - Test object to mark
+   */
   async automarking(test: Test) {
     const questionIds = test.questionIds;
     const questions: Question[] = await this.questionModel.find({
       _id: { $in: questionIds },
     });
     let hasFlaggedAnswer = false;
+    
+    // Process each question
     for (const question of questions) {
       const answers = await this.answerModel.find({ questionId: question._id });
       const ratingScale = question.ratingScale;
       const keys = Array.from(ratingScale.keys()).map(Number);
       const maxScore = Math.max(...keys);
 
+      // Score each answer
       for (const answer of answers) {
         const score = this.scoreAnswer(
           answer.answer,
@@ -307,7 +370,8 @@ export class AutoMarkService {
           test.markConfig,
           maxScore,
         );
-        // Logger.log('answer:' + answer.answer + ',score:' + score);
+        
+        // Update answer with score and status
         if (score == -1) {
           hasFlaggedAnswer = true;
           await this.answerModel.updateOne(
@@ -322,6 +386,8 @@ export class AutoMarkService {
         }
       }
     }
+    
+    // Update test status based on whether any answers were flagged
     if (hasFlaggedAnswer) {
       await this.testModel.updateOne(
         { _id: test._id },
@@ -335,6 +401,14 @@ export class AutoMarkService {
     }
   }
 
+  /**
+   * Scores a single answer based on marking configuration
+   * @param answer - Student's answer text
+   * @param keys - Correct answer keys with alternatives
+   * @param markingOptions - Marking configuration options
+   * @param maxScore - Maximum possible score for this question
+   * @returns Score (0 to maxScore) or -1 if flagged
+   */
   scoreAnswer(
     answer: string,
     keys: any[],
@@ -342,25 +416,26 @@ export class AutoMarkService {
     maxScore: number,
   ): number {
     if (answer == null || answer.length == 0) return 0;
+    
     const isCorrect = this.checkAns(keys, answer);
     let score = isCorrect == true ? maxScore : 0;
-    //find specific reasons
+    
+    // Apply marking rules if answer is incorrect
     if (isCorrect == false) {
-      //case
+      // Check case sensitivity
       const normalizedAnswer = answer.toLowerCase();
       const keysWithLocerCases = this.processKeysToLowerCase(keys);
       if (this.checkAns(keysWithLocerCases, normalizedAnswer)) {
         if (markingOptions.caseMistakesOption === ConfigOption.Flag) {
-          // Logger.log('Case Flagged');
           score = -1;
         } else if (
           markingOptions.caseMistakesOption == ConfigOption.Incorrect
         ) {
-          // Logger.log('Case error');
           return 0;
         }
       }
-      //punctuation
+      
+      // Check punctuation
       const answerWithoutPunctuation = this.removePunctuation(answer);
       const keysWithoutPunctuation = keys.map((key) => ({
         ...key,
@@ -377,15 +452,14 @@ export class AutoMarkService {
       if (this.checkAns(keysWithoutPunctuation, answerWithoutPunctuation)) {
         if (markingOptions.punctuationMistakesOption === ConfigOption.Flag) {
           score = -1;
-          // Logger.log('Punctuation Flagged');
         } else if (
           markingOptions.punctuationMistakesOption === ConfigOption.Incorrect
         ) {
-          // Logger.log('Punctuation error');
           return 0;
         }
       }
-      //check spelling
+      
+      // Check spelling
       const words = answer.split(/\s+/);
       let correctSpell = true;
       for (const word of words) {
@@ -399,42 +473,37 @@ export class AutoMarkService {
         }
         if (isMisspelled && !foundInKeys) {
           correctSpell = false;
-          // Logger.log('Spelling mistakes:' + word);
         }
       }
 
       if (!correctSpell) {
         if (markingOptions.spellingMistakesOption === ConfigOption.Flag) {
           score = -1;
-          // Logger.log('Spelling Mistakes Flagged');
         } else if (
           markingOptions.spellingMistakesOption === ConfigOption.Incorrect
         ) {
-          // Logger.log('Spelling Mistakes error');
           return 0;
         }
       }
-      //check grammar see if key and answer are the same when they are all converted to a singular form.
+      
+      // Check grammar (plural/singular forms)
       if (this.checkPlural(keys, answer)) {
         if (markingOptions.grammaticalErrorsOption === ConfigOption.Flag) {
           score = -1;
-          // Logger.log('Grammatical Mistakes Flagged');
         } else if (
           markingOptions.grammaticalErrorsOption === ConfigOption.Incorrect
         ) {
-          // Logger.log('Grammatical Mistakes error');
           return 0;
         }
       }
-      //contraction - just a rough check
+      
+      // Check contractions
       if (answer.includes("'")) {
         if (markingOptions.contractionMistakesOption === ConfigOption.Flag) {
           score = -1;
-          // Logger.log('Contraction Flagged');
         } else if (
           markingOptions.contractionMistakesOption === ConfigOption.Incorrect
         ) {
-          // Logger.log('Contraction error');
           return 0;
         }
       }
@@ -443,13 +512,19 @@ export class AutoMarkService {
     return score;
   }
 
+  /**
+   * Checks if answer matches any key when converted to singular form
+   * @param keys - Answer keys
+   * @param answer - Student answer
+   * @returns True if answer matches in singular form
+   */
   checkPlural(keys: any[], answer: string): boolean {
     let isCorrect = false;
 
     for (const key of keys) {
       let regexString = this.escapeRegExp(
         key.key.replace(/[.*+?^${}()|[\]\\]/g, ''),
-      ); // Start with the original key string
+      );
 
       // Convert the original key to its singular form
       regexString = this.pluralize.singular(regexString);
@@ -482,17 +557,24 @@ export class AutoMarkService {
       // Check if the singular form of the answer matches the regex
       if (regex.test(singularAnswer)) {
         isCorrect = true;
-        break; // Assume the highest score if any key matches
+        break;
       }
     }
     return isCorrect;
   }
+
+  /**
+   * Checks if answer matches any key exactly
+   * @param keys - Answer keys with alternatives
+   * @param answer - Student answer
+   * @returns True if answer matches any key
+   */
   checkAns(keys: any[], answer: string): boolean {
     let isCorrect = false;
 
     // Iterate over each key
     for (const key of keys) {
-      let regexString = this.escapeRegExp(key.key); // Start with the original key string
+      let regexString = this.escapeRegExp(key.key);
 
       // Check if alternativeKeys exists and is a Map
       if (key.alternativeKeys instanceof Map) {
@@ -512,18 +594,35 @@ export class AutoMarkService {
       // Check if the answer matches the regex
       if (regex.test(answer)) {
         isCorrect = true;
-        break; // Assume the highest score if any key matches
+        break;
       }
     }
     return isCorrect;
   }
+
+  /**
+   * Escapes special regex characters in a string
+   * @param text - Text to escape
+   * @returns Escaped text
+   */
   escapeRegExp(text: string): string {
-    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // Escape special regex characters
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
+
+  /**
+   * Removes punctuation from text
+   * @param text - Text to process
+   * @returns Text without punctuation
+   */
   removePunctuation(text) {
     return text.replace(/[\.,\/#!$%\^&\*;:{}=\-_`~()\[\]\"\'\?<>\\|@]/g, '');
   }
 
+  /**
+   * Converts all keys to lowercase for case-insensitive comparison
+   * @param keys - Original keys
+   * @returns Keys converted to lowercase
+   */
   processKeysToLowerCase(keys: AlternativeKey[]): AlternativeKey[] {
     return keys.map((keyObject) => {
       const lowerKey = keyObject.key.toLowerCase();
@@ -545,6 +644,12 @@ export class AutoMarkService {
     });
   }
 
+  /**
+   * Checks if a word exists in the key or its alternatives
+   * @param key - Answer key
+   * @param searchWord - Word to search for
+   * @returns True if word is found in key or alternatives
+   */
   containsWordInKeyAndAlternatives(key, searchWord) {
     const escapedWord = this.escapeRegExp(searchWord);
     const wordRegex = new RegExp(`\\b${escapedWord}\\b`, 'i');
@@ -571,6 +676,10 @@ export class AutoMarkService {
     return false;
   }
 
+  /**
+   * Gets list of available markers (users with marker role)
+   * @returns List of marker users
+   */
   async getMarkerList() {
     try {
       const markers = await this.userModel.find(
