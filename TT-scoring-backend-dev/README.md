@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a backend repository for a **transcript test project**. It primarily provides API interfaces, processes frontend requests, and returns data. For more project details, including documentation, please refer to the frontend repository https://github.com/COMP90082-2024-SM1/TT-Scoring-FrontEnd/.
+This is a backend repository for a **transcript test project**. It primarily provides API interfaces, processes frontend requests, and returns data.
 
 ## Features
 
@@ -116,8 +116,6 @@ We use Swagger API to list all endpoints. You can access it through `http://loca
 
 All notable changes to this project will be documented in this section.
 
-### [COMP90082_2024_SM1_TT_Wombat_BL_SPRINT1] - 22/03/2024
-
 #### Added
 
 - **Database Connection**: Established connection with MongoDB and completed the design of the User schema.
@@ -126,16 +124,12 @@ All notable changes to this project will be documented in this section.
 - **User Profile**: Added functionality to retrieve user profiles based on the cookie information。
 - **API Documentation**: Integrated Swagger for API documentation.
 
-### [COMP90082_2024_SM1_TT_Wombat_BL_SPRINT2] - 02/05/2024
-
 #### Added
 
 - **Test Management**: Implemented functionality that allows Test Developers to modify, add, and delete tests, ensuring dynamic test handling within the system.
 - **Question Management**: Implemented functionality that allows Test Developers to modify, add, and delete questions for each test.
 - **Key Generation**: Developed a system feature that generates alternative keys for each set key. Test Developers have the capability to freely select and add new alternative keys, enhancing the flexibility of test configurations.
 - **Reading Excel Files**: Enabled the system to automatically read imported Excel files to retrieve predefined keys and alternative words.
-
-### [COMP90082_2024_SM1_TT_Wombat_BL_SPRINT3] - 24/05/2024
 
 #### Added
 
@@ -144,8 +138,6 @@ All notable changes to this project will be documented in this section.
 - **Assign Marker Endpoint**: Implemented an endpoint that allows assigning markers to specific tests.
 - **Download Results**: Developed a function that enables users to download marking results directly from the system。
 - **Rate Limiting for Login Endpoint**: Implemented rate limiting on the login endpoint to prevent abuse and ensure fair usage.
-
-### [COMP90082_2024_SM1_TT_Wombat_BL_SPRINT4] - 07/06/2024
 
 #### Added
 

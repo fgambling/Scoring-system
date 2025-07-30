@@ -29,6 +29,8 @@
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "class-validator": "^0.14.1",
+    "cspell-lib": "^9.2.0",
+    "dotenv": "^17.2.1",
     "exceljs": "^4.4.0",
     "express": "^4.19.2",
     "mongoose": "^8.2.2",
@@ -37,7 +39,6 @@
     "pluralize": "^8.0.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
-    "spellchecker": "^3.7.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

@@ -1,26 +1,29 @@
 import * as mongoose from 'mongoose';
 
-// export const databaseProviders = [
-//   {
-//     provide: 'DATABASE_CONNECTION',
-//     useFactory: (): Promise<typeof mongoose> =>
-//       mongoose.connect(
-//         'mongodb+srv://ttscoring:F6bvfX3kMcatckhE@cluster0.lzx96l6.mongodb.net/scoring-system?retryWrites=true&w=majority&appName=Cluster0',
-//       ),
-//   },
-// ];
-
+/**
+ * Database providers configuration
+ * Uses environment variables for flexible database connection
+ * Supports both local MongoDB and MongoDB Atlas
+ */
 export const databaseProviders = [
   {
     provide: 'DATABASE_CONNECTION',
-    useFactory: (): Promise<typeof mongoose> =>
-      mongoose
-        .connect(
-          'mongodb+srv://ttscoring:F6bvfX3kMcatckhE@cluster0.lzx96l6.mongodb.net/scoring-system?retryWrites=true&w=majority&appName=Cluster0',
-        )
+    useFactory: (): Promise<typeof mongoose> => {
+      // Get MongoDB URI from environment variables, fallback to local MongoDB
+      const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/scoring-system';
+      
+      console.log('Connecting to MongoDB:', mongoUri.replace(/\/\/.*@/, '//***:***@')); // Hide credentials in logs
+      
+      return mongoose
+        .connect(mongoUri)
         .then(() => {
-          console.log('mongodb connected');
+          console.log('MongoDB connected successfully');
           return mongoose;
-        }),
+        })
+        .catch((error) => {
+          console.error('MongoDB connection error:', error);
+          throw error;
+        });
+    },
   },
 ];

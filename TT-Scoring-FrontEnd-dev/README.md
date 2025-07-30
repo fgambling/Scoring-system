@@ -1,33 +1,8 @@
 update logs:
 
-We added features to fulfill following user stories in Sprint 2 (2024.03.25-2024.05.02)
+We added features to fulfill following user stories in Sprint 2 
 
-+ view our product demo at
-  +  https://youtu.be/Fm2SH1FEX0A (sprint2)
-  + https://www.youtube.com/watch?v=OY3Lyu7BlrQ (sprint3)
-  + https://youtu.be/hB0Ui_gUguw (final product)
-
-User stories fulfilled:  
-
-| User Story ID | Description                                                  | Points | Priority |
-| :------------ | :----------------------------------------------------------- | :----- | :------- |
-| US001         | As a test developer, I want a user-friendly, secure, functional interface. | 29     | High     |
-| US002         | As a test developer, I want to implement a secure login system and a reliable database, so that I can securely store and protect user data and system information. | 29     | High     |
-| US003         | As a test develop, I want to construct, preserve, and eliminate tests as needed, so that I can efficiently manage the lifecycle of tests. | 67     | Low      |
-| US004         | As a test developer, I want to have the ability to add and delete items (questions) within existing tests to adapt the tests as needed. | 24     | Medium   |
-| US005         | As a test developer, I want to have the ability to add, edit, and delete test keys (correct answers) to ensure the validity of the tests we develop. | 6      | Medium   |
-| US006         | As a test developer, I want to have flexibility in defining scoring rules, so that I can specify whether the scoring system is dichotomous (e.g., correct/incorrect) or allows partial scoring. | 1      | Medium   |
-| US007         | As a test developer, I want to have options to handle different types of answers: Ignore case sensitivity, flag answers for manual marking if partially matched, handle spelling mistakes or minor grammatical errors. | 5      | Medium   |
-| US008         | As a test developer, I want to have a secure and friendly environment, so that I can work in a stress-free atmosphere and ensure the integrity of the tests. | 13     | Medium   |
-| US009         | As a test developer, I want to publish the test after everything is confirmed, so that I can guarantee the test is accurate and ready for test takers. | 5      | Medium   |
-| US010         | As a test developer, I want the system to automatically evaluate test taker responses based on predefined rules, so that we can efficiently assess transcription ability. | 32     | Medium   |
-| US011         | As a test developer, I want to upload test taker answers from an Excel file, and the system should handle trimming extra spaces and multi-word answers, so that the assessment process is streamlined. | 9      | Medium   |
-| US012         | As a test developer, I want to have the ability to download or copy marked answers result for further analysis, reporting, and maintaining records, so that we can track and improve test taker performance. | 4      | High     |
-| US013         | As a test developer, I want to have the ability to assign marker to tests, so that the marking process is organised and efficient. | 7      | Medium   |
-
-
-
-# 1. TT-Scoring Project Introduction
+# 1.Scoring Project Introduction
 
 ## Project Overview
 

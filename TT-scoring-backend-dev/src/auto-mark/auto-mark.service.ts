@@ -211,8 +211,7 @@ export class AutoMarkService {
     }
   }
 
-  // Private properties for spell checking and pluralization
-  private spellChecker;
+  // Private property for pluralization
   private pluralize;
 
   /**
@@ -232,12 +231,9 @@ export class AutoMarkService {
   }
 
   /**
-   * Initializes spell checker and pluralization libraries
+   * Initializes pluralization library
    */
   private async initInstance(): Promise<void> {
-    if (!this.spellChecker) {
-      this.spellChecker = await import('spellchecker');
-    }
     if (!this.pluralize) {
       this.pluralize = await import('pluralize');
     }
@@ -364,7 +360,7 @@ export class AutoMarkService {
 
       // Score each answer
       for (const answer of answers) {
-        const score = this.scoreAnswer(
+        const score = await this.scoreAnswer(
           answer.answer,
           question.keys,
           test.markConfig,
@@ -409,12 +405,12 @@ export class AutoMarkService {
    * @param maxScore - Maximum possible score for this question
    * @returns Score (0 to maxScore) or -1 if flagged
    */
-  scoreAnswer(
+  async scoreAnswer(
     answer: string,
     keys: any[],
     markingOptions: MarkConfig,
     maxScore: number,
-  ): number {
+  ): Promise<number> {
     if (answer == null || answer.length == 0) return 0;
     
     const isCorrect = this.checkAns(keys, answer);
@@ -459,11 +455,20 @@ export class AutoMarkService {
         }
       }
       
-      // Check spelling
+      // Check spelling using cspell
       const words = answer.split(/\s+/);
       let correctSpell = true;
       for (const word of words) {
-        const isMisspelled = this.spellChecker.isMisspelled(word.toLowerCase());
+        // Use cspell to check spelling
+        const spellCheckResult = await import('cspell-lib').then(
+          (cspell) => cspell.spellCheckDocument(
+            { uri: 'temp', text: word },
+            {},
+            {}
+          )
+        );
+        const isMisspelled = spellCheckResult.issues.length > 0;
+        
         let foundInKeys = false;
         for (const key of keys) {
           if (this.containsWordInKeyAndAlternatives(key, word)) {
