@@ -19,6 +19,8 @@ import { TestsModule } from './tests/tests.module';
 import { AutoMarkModule } from './auto-mark/auto-mark.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guards';
+import { AwsModule } from './aws/aws.module';
+import { FilesController } from './files/files.controller';
 
 /**
  * Main application module that configures all dependencies and modules
@@ -35,6 +37,9 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guards';
     TestsModule,        // Manages test creation, editing, and metadata
     AutoMarkModule,     // Handles automatic scoring functionality
     ManualMarkModule,   // Handles manual marking functionality
+    
+    // AWS integration module
+    AwsModule,          // AWS services integration (S3, CloudWatch, SNS)
     
     // Rate limiting configuration to prevent API abuse
     ThrottlerModule.forRoot({
@@ -55,6 +60,7 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guards';
     UsersController,         // User management endpoints
     ManualMarkController,    // Manual marking endpoints
     TestsController,         // Test management endpoints
+    FilesController,         // File operations endpoints (S3)
   ],
 
   // Providers include services and guards that provide business logic

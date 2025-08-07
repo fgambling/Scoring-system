@@ -13,6 +13,7 @@ import { TestStatus } from 'src/tests/enums/test.status.enum';
 import { MarkConfig } from './interface/markingConfig.interface';
 import { ConfigOption } from 'src/tests/enums/config.option.enum';
 import * as ExcelJS from 'exceljs';
+import { AwsService } from '../aws/aws.service';
 
 /**
  * Interface for student score data structure
@@ -29,6 +30,7 @@ import { User } from 'src/users/interface/user.interface';
 /**
  * Automatic marking service that handles automated test scoring
  * Provides functionality for scoring answers, downloading results, and managing marking reports
+ * Integrated with AWS services for file storage and monitoring
  */
 @Injectable()
 export class AutoMarkService {
@@ -135,8 +137,34 @@ export class AutoMarkService {
       worksheet.addRow(row);
     });
 
-    // Return Excel file as buffer
+    // Generate Excel buffer
     const buffer = await workbook.xlsx.writeBuffer();
+    
+    // Upload to S3 if AWS is configured
+    if (process.env.AWS_S3_BUCKET) {
+      try {
+        const s3Key = this.awsService.generateS3Key('results', `test-${id}-results.xlsx`);
+        await this.awsService.uploadToS3(buffer, s3Key);
+        
+        // Send CloudWatch metric for download
+        await this.awsService.sendMetric(
+          'ScoringSystem',
+          'TestResultsDownloaded',
+          1,
+          'Count'
+        );
+        
+        // Send SNS notification
+        await this.awsService.sendNotification(
+          `Test results downloaded for test: ${test.name}`,
+          'Test Results Downloaded',
+        );
+      } catch (error) {
+        console.error('AWS integration error:', error);
+        // Continue with local buffer if AWS fails
+      }
+    }
+    
     return buffer;
   }
 
@@ -226,6 +254,7 @@ export class AutoMarkService {
     private questionModel: Model<Question>,
     @Inject('USER_MODEL')
     private userModel: Model<User>,
+    private readonly awsService: AwsService,
   ) {
     this.initInstance();
   }
